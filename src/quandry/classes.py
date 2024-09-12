@@ -20,10 +20,12 @@ class TestResult():
 class Evaluation():
     test_result:TestResult
     valid:bool
+    def __init__(self, test_result:TestResult, valid:bool):
+        self.test_result = test_result
+        self.valid = valid
 
 """Evaluates the result of a TestResult"""
 class IEvaluator(ABC):
     @abstractmethod
     def validate (self, TestResult) -> Evaluation:
         pass
-

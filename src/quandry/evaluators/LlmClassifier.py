@@ -42,8 +42,9 @@ class Evaluator_LlmClassifier(IEvaluator):
             print(run.status)
 
         return response
-    def validate(self, test_result):
-        pass
+    def validate(self, test_result:TestResult) -> Evaluation:
+        type(self)._send_chatgpt(test_result.response, test_result.test_prompt.expectation)
+        return Evaluation(test_result, True)
 
 
 """ 
