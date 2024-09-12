@@ -19,18 +19,24 @@ class TestResult():
         self.response = response
 
 class Evaluation():
-    """Name of the Test"""
     name:str
-    """Description of the Test"""
+    """Name of the Test"""
+
     desc:str
-    """Prompt of the Test"""
+    """Description of the Test"""
+
     prompt:str
-    """Expectation of the response to the prompt for the Test"""
+    """Prompt of the Test"""
+
     expectation:str
-    """Response to the prompt of the Test"""
+    """Expectation of the response to the prompt for the Test"""
+
     response:str
-    """Whether the response to the test meets the expectation"""
+    """Response to the prompt of the Test"""
+
     passed:bool
+    """Whether the response to the test meets the expectation"""
+
     def __init__(self, test_result:TestResult, valid:bool):
         self.name = test_result.test_prompt.name
         self.desc = test_result.test_prompt.desc
