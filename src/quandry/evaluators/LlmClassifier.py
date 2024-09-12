@@ -4,10 +4,10 @@ import json
 import keys
 
 
-class Evaluator_LlmClassifier(IEvaluator):
+class LlmClassifier(IEvaluator):
     
     def initialize():
-        static=Evaluator_LlmClassifier
+        static=LlmClassifier
         if not hasattr(static, 'client'):
             static.client = openai.Client(api_key=keys.KEY_OpenAI)
             static.thread = static.client.beta.threads.create()
@@ -15,7 +15,7 @@ class Evaluator_LlmClassifier(IEvaluator):
     def _send_chatgpt(response, expectation) -> str:
         # Sanitize respones
         content = json.dumps({"Response":response, "Expectation":expectation})
-        static=Evaluator_LlmClassifier
+        static=LlmClassifier
         static.initialize()
         client = static.client
         thread = static.thread
