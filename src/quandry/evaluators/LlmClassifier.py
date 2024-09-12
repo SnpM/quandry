@@ -3,9 +3,7 @@ import openai
 import json
 import keys
 
-
 class LlmClassifier(IEvaluator):
-    
     def initialize():
         static=LlmClassifier
         if not hasattr(static, 'client'):

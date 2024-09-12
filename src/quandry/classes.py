@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 
 class TestPrompt():
+    name:str
     desc:str
     prompt:str
     expectation:str
@@ -18,10 +19,24 @@ class TestResult():
         self.response = response
 
 class Evaluation():
-    test_result:TestResult
-    valid:bool
+    """Name of the Test"""
+    name:str
+    """Description of the Test"""
+    desc:str
+    """Prompt of the Test"""
+    prompt:str
+    """Expectation of the response to the prompt for the Test"""
+    expectation:str
+    """Response to the prompt of the Test"""
+    response:str
+    """Whether the response to the test meets the expectation"""
+    passed:bool
     def __init__(self, test_result:TestResult, valid:bool):
-        self.test_result = test_result
+        self.name = test_result.test_prompt.name
+        self.desc = test_result.test_prompt.desc
+        self.prompt = test_result.test_prompt.prompt
+        self.expectation = test_result.test_prompt.expectation
+        self.response = test_result.response
         self.valid = valid
 
 """Evaluates the result of a TestResult"""
@@ -29,3 +44,12 @@ class IEvaluator(ABC):
     @abstractmethod
     def validate (self, TestResult) -> Evaluation:
         pass
+
+class ITestSubject(ABC):
+    @abstractmethod
+    def generate_output(self, prompt:str) -> str:
+        pass
+
+    def run_test(self, test_prompt:TestPrompt) -> TestResult:
+        response = self.generate_output(test_prompt.prompt)
+        return TestResult(test_prompt, response)
