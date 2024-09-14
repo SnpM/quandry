@@ -5,7 +5,7 @@
 import pytest
 
 from quandry.classes import *
-from quandry.subjects import VanillaChatGPT
+from quandry.testsubjects import VanillaChatGPT
 from quandry.evaluators import LlmClassifier
 def test_test_one():
     test = PromptTest(VanillaChatGPT(), LlmClassifier())
