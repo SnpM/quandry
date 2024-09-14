@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+
+[project]
+name = 'quandry'
+version = '2024.0.0.dev0'
+authors = [
+  {name = "John Pan", email = "jpthek9@gmail.com"},
+  {name = "Daniel Hayase", email = "dhayase@andrew.cmu.edu"},
+  {name = "Nick Hamby", email = "nhamby@andrew.cmu.edu"},
+  {name = "Niccolo Bitetto", email = "nbitetto@andrew.cmu.edu"}
+]
+requires-python = "==3.11.9"
+dynamic = ["dependencies"]
+
+
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra"
+testpaths = [
+    "tests"
+    ]
+pythonpath = "src"

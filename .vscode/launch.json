@@ -4,19 +4,31 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
+
         {
             "name": "Python Debugger: Current File",
             "type": "debugpy",
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal"
-        }
+        },
 
         {
-            "name": "test",
+            "name": "jankytest",
             "type": "debugpy",
             "request": "launch",
-            "program": "src/test.py",
+            "program": "tests/jankytests.py",
+            "console": "integratedTerminal"
+        },
+
+        {
+            "name": "pytest",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "pytest",
+            "args": [
+                "${workspaceFolder}"
+            ],
             "console": "integratedTerminal"
         }
     ]

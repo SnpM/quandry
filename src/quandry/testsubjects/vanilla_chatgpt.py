@@ -1,5 +1,5 @@
 from quandry.classes import *
-from quandry.classes import TestPrompt
+from quandry.classes import PromptTestCase
 import keys
 
 import openai
@@ -14,7 +14,7 @@ class VanillaChatGPT(ITestSubject):
         completion = type(self).client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": prompt},
+                {"role": "user", "content": prompt},
             ]
         )
         return completion.choices[0].message.content

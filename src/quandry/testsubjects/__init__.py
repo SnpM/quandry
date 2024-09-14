@@ -1,0 +1,1 @@
+from quandry.testsubjects.vanilla_chatgpt import VanillaChatGPT
