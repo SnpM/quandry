@@ -1,6 +1,7 @@
 .gitignore
 environment.yaml
 guide.ipynb
+keys.py
 pyproject.toml
 requirements.txt
 .vscode/launch.json

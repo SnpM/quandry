@@ -32,6 +32,9 @@ class Evaluation(IntEnum):
     ERROR=0
     PASS=1
     FAIL=2
+    def __str__(self):
+        return self.name
+
 class EvaluationResult():
 
     name:str
