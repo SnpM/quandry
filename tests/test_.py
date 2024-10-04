@@ -10,7 +10,8 @@ from quandry.evaluators import LlmClassifier
 def test_test_one():
     test = PromptTest(VanillaChatGPT(), LlmClassifier())
     result = test.test_one(PromptTestCase("What is the capital of France?",
-               expect="The capital of France, Paris."))
+               expect="The response should correctly convey Paris"))
+    
     assert result.evaluation == True
 
 

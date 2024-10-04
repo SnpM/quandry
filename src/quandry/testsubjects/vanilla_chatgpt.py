@@ -1,6 +1,6 @@
 from quandry.classes import *
 from quandry.classes import PromptTestCase
-import keys
+import keys as keys
 
 import openai
 
