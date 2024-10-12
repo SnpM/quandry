@@ -10,25 +10,25 @@ from quandry.evaluators import LlmClassifier, LlmClassifierBackend
 
 
 def test_test_one():
-    test = PromptTest(VanillaChatGPT(), LlmClassifier())
-    result = test.test_one(PromptTestCase("What is the capital of France?",
+    test = ExpectationTester(VanillaChatGPT(), LlmClassifier())
+    result = test.test_one(ExpectationCase("What is the capital of France?",
                expect="The response should correctly convey Paris"))
 
-    assert result.evaluation == Evaluation.PASS
+    assert result.evalcode == EvalCode.PASS
 
 def test_gemini_classifier():
-    test = PromptTest(VanillaChatGPT(), LlmClassifier(LlmClassifierBackend.Gemini))
-    result = test.test_one(PromptTestCase("What is the capital of France?",
+    test = ExpectationTester(VanillaChatGPT(), LlmClassifier(LlmClassifierBackend.Gemini))
+    result = test.test_one(ExpectationCase("What is the capital of France?",
         expect="The response should correctly convey Paris"))
 
-    assert result.evaluation == Evaluation.PASS
+    assert result.evaluation == EvalCode.PASS
 
 def test_chatgptclassifier():
-    test = PromptTest(VanillaChatGPT(), LlmClassifier(LlmClassifierBackend.ChatGPT))
-    result = test.test_one(PromptTestCase("What is the capital of France?",
+    test = ExpectationTester(VanillaChatGPT(), LlmClassifier(LlmClassifierBackend.ChatGPT))
+    result = test.test_one(ExpectationCase("What is the capital of France?",
         expect="The response should correctly convey Paris"))
 
-    assert result.evaluation == Evaluation.PASS
+    assert result.evaluation == EvalCode.PASS
 
 
 """

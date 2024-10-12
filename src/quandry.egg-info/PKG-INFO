@@ -2,6 +2,6 @@ Metadata-Version: 2.1
 Name: quandry
 Version: 2024.0.0.dev0
 Author-email: John Pan <jpthek9@gmail.com>, Daniel Hayase <dhayase@andrew.cmu.edu>, Nick Hamby <nhamby@andrew.cmu.edu>, Niccolo Bitetto <nbitetto@andrew.cmu.edu>
-Requires-Python: ==3.11.9
+Requires-Python: >=3.11.0
 Requires-Dist: openai==1.44.1
 Requires-Dist: pandas==2.2.2

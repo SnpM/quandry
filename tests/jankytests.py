@@ -30,8 +30,8 @@ if TEST_SEND_CHATGPT:
 if TEST_VANILLA_CHATGPT:
     from quandry.testsubjects.vanilla_chatgpt import VanillaChatGPT
     vanilla = VanillaChatGPT()
-    print(vanilla.generate_output("What is the capital of France?"))
-    test_case = PromptTestCase(
+    print(vanilla.respond("What is the capital of France?"))
+    test_case = ExpectationCase(
                 prompt= "What is the capital of France?",
                expect="The capital of France, Paris.")
     test_result = vanilla.run_test(test_case)
@@ -42,8 +42,8 @@ if TEST_VANILLA_CHATGPT:
 
 if TEST_WORKFLOW:
 
-    prompt_test = PromptTest(VanillaChatGPT(), LlmClassifier())
-    eval = prompt_test.test_one(PromptTestCase("What is the capital of France?",
+    prompt_test = ExpectationTester(VanillaChatGPT(), LlmClassifier())
+    eval = prompt_test.test_one(ExpectationCase("What is the capital of France?",
                expect="The capital of France, Paris."))    
     
     assert (eval.passed)
@@ -53,7 +53,7 @@ if TEST_WORKFLOW_MULTI:
 
     test_cases = pu.df2cases(pd.read_csv("./examples/expectation_prompts.csv").head(5))
 
-    prompt_test = PromptTest(VanillaChatGPT(), LlmClassifier())
+    prompt_test = ExpectationTester(VanillaChatGPT(), LlmClassifier())
     results = pu.eval2df(prompt_test.test(test_cases))
 
     print(results)

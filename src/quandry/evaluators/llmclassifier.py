@@ -1,10 +1,15 @@
 from quandry import *
 import openai
 import json
-import keys as keys
 import google.generativeai as genai
 REUSE_THREAD = False
 from typing import Tuple
+
+# Ensure keys are loaded and work
+import keys as keys
+assert hasattr(keys, 'KEY_OpenAI'), "OpenAI API key not found in keys.py"
+assert hasattr(keys, 'KEY_GeminiAPI'), "Gemini API key not found in keys.py"
+
 
 from enum import Enum
 class LlmClassifierBackend(Enum):
@@ -14,27 +19,27 @@ class LlmClassifier(IEvaluator):
     def __init__(self, backend:LlmClassifierBackend = LlmClassifierBackend.Gemini):
         self.backend = backend
             
-    def validate(self, test_result:PromptTestResult) -> EvaluationResult:
+    def validate(self, prompt:str, expectation:str, response:str) -> Evaluation:
         if self.backend == LlmClassifierBackend.ChatGPT:
-            (evaluation, explanation) = type(self)._send_chatgpt(test_result.test_case.prompt, test_result.test_case.expectation, test_result.response)
+            (evalcode, explanation) = type(self)._send_chatgpt(prompt, expectation, response)
         elif self.backend == LlmClassifierBackend.Gemini:
-            (evaluation, explanation) = type(self)._send_gemini(test_result.test_case.prompt, test_result.test_case.expectation, test_result.response)
-        return EvaluationResult(test_result, evaluation, explanation)
+            (evalcode, explanation) = type(self)._send_gemini(prompt, expectation, response)
+        return Evaluation(evalcode, explanation)
     
-    def parse_response(response:str) ->Tuple[str,str]:
+    def parse_response(response:str) -> Tuple[EvalCode,str]:
         (evaluation, explanation) = parsed = response.split('%')
         if (len(parsed) != 2):
-            return (Evaluation.ERROR, f"API response invalid: `{response}`")
+            return (EvalCode.ERROR, f"API response invalid: `{response}`")
         
         match parsed[0]:
             case 'ERROR':
-                return (Evaluation.ERROR, parsed[1])
+                return (EvalCode.ERROR, parsed[1])
             case 'PASS':
-                return (Evaluation.PASS, parsed[1])
+                return (EvalCode.PASS, parsed[1])
             case 'FAIL':
-                return (Evaluation.FAIL, parsed[1])
+                return (EvalCode.FAIL, parsed[1])
         
-        return (Evaluation.ERROR, f"Decision invalid: `{response}`")
+        return (EvalCode.ERROR, f"Decision invalid: `{response}`")
         
             
     def _send_gemini(prompt, expectation, response) -> Tuple[str,str]:
@@ -77,7 +82,7 @@ class LlmClassifier(IEvaluator):
         if response._done:
             return LlmClassifier.parse_response(response.candidates[0].content.parts[0].text)
         else:
-            return (Evaluation.ERROR, f"API query failed with error `{response.error}`")
+            return (EvalCode.ERROR, f"API query failed with error `{response.error}`")
         
     def _send_chatgpt(prompt, expectation, response) -> tuple[str,str]:
         static = LlmClassifier
@@ -115,7 +120,7 @@ class LlmClassifier(IEvaluator):
             return LlmClassifier.parse_response(response)
         else:
             print("Failure: " + run.status + " | " + run.error)
-            return (Evaluation.ERROR,f"API query failed with error `{run.error}`")
+            return (EvalCode.ERROR,f"API query failed with error `{run.error}`")
 
 """ 
 asst_LFWBou3GfbVZyNQGwUpLslZi

@@ -1,13 +1,14 @@
 .gitignore
+README.md
 environment.yaml
 guide.ipynb
-keys.py
+keys.py.template
 pyproject.toml
 requirements.txt
 .vscode/launch.json
 .vscode/settings.json
 docs/guide.ipynb
-docs/examples/evaluations_example.xlsx
+docs/examples/evaluation_results.xlsx
 docs/examples/expectation_prompts.csv
 src/__pycache__/keys.cpython-311.pyc
 src/__pycache__/keys.cpython-312.pyc
@@ -28,7 +29,6 @@ src/quandry/__pycache__/pandas_util.cpython-311.pyc
 src/quandry/evaluators/__init__.py
 src/quandry/evaluators/llmclassifier.py
 src/quandry/evaluators/__pycache__/Evaluator_LlmClassifier.cpython-311.pyc
-src/quandry/evaluators/__pycache__/LlmClassifier.cpython-311.pyc
 src/quandry/evaluators/__pycache__/__init__.cpython-311.pyc
 src/quandry/evaluators/__pycache__/defaultevaluators.cpython-311.pyc
 src/quandry/evaluators/__pycache__/llmclassifier.cpython-311.pyc

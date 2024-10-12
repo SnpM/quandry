@@ -12,7 +12,7 @@ authors = [
   {name = "Nick Hamby", email = "nhamby@andrew.cmu.edu"},
   {name = "Niccolo Bitetto", email = "nbitetto@andrew.cmu.edu"}
 ]
-requires-python = "==3.11.0"
+requires-python = ">=3.11.0"
 dynamic = ["dependencies"]
 
 

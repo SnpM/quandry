@@ -3,7 +3,7 @@ from typing import final
 from collections.abc import Collection
 import json
 
-class PromptTestCase():
+class ExpectationCase():
     name:str
     desc:str
     prompt:str
@@ -17,54 +17,47 @@ class PromptTestCase():
 
     def __str__(self):
         return json.dumps(self.__dict__)
-class PromptTestResult():
-    test_case:PromptTestCase
-    response:str
-    def __init__(self, test_case:PromptTestCase, response:str):
-        self.test_case = test_case
-        self.response = response
-
-    def __str__(self):
-        return json.dumps(self.__dict__)
 
 from enum import IntEnum
-class Evaluation(IntEnum):
+class EvalCode(IntEnum):
     ERROR=0
     PASS=1
     FAIL=2
     def __str__(self):
         return self.name
 
-class EvaluationResult():
+class Evaluation():
+    code:EvalCode
+    explanation:str
+    def __init__(self, code:EvalCode, explanation:str):
+        self.code = code
+        self.explanation = explanation
+    def __str__(self):
+        return json.dumps(self.__dict__)
 
+class TestResult():
     name:str
     """Name of the Test"""
-
     desc:str
     """Description of the Test"""
-
     prompt:str
     """Prompt of the Test"""
-
     expectation:str
     """Expectation of the response to the prompt for the Test"""
-
     response:str
     """Response to the prompt of the Test"""
-
-    evaluation:Evaluation
+    evaluation:EvalCode
     """Whether the response to the test meets the expectation"""
-
     explanation:str
     """Explanation for evaluation decision."""
 
-    def __init__(self, test_result:PromptTestResult, evaluation:bool, explanation:str=""):
-        self.name = test_result.test_case.name
-        self.desc = test_result.test_case.desc
-        self.prompt = test_result.test_case.prompt
-        self.expectation = test_result.test_case.expectation
-        self.response = test_result.response
-        self.evaluation = evaluation
+    def __init__(self, case:ExpectationCase, response, evalcode:EvalCode, explanation:str=""):
+        self.name = case.name
+        self.desc = case.desc
+        self.prompt = case.prompt
+        self.expectation = case.expectation
+        self.response = response
+        self.evalcode = evalcode
         self.explanation = explanation
 
     def __str__(self):
@@ -73,30 +66,22 @@ class EvaluationResult():
 """Evaluates the result of a TestResult"""
 class IEvaluator(ABC):
     @abstractmethod
-    def validate (self, TestResult) -> EvaluationResult:
+    def validate(self, prompt:str, expectation:str, response:str) -> Evaluation:
         pass
 
-class ITestSubject(ABC):
+class ISubject(ABC):
     @abstractmethod
-    def generate_output(self, prompt:str) -> str:
+    def respond(self, prompt:str) -> str:
         pass
-
-    @final
-    def run_test(self, test_case:PromptTestCase) -> PromptTestResult:
-        response = self.generate_output(test_case.prompt)
-        return PromptTestResult(test_case, response)
     
-
 @final
-class PromptTest():
-    def __init__(self, test_subject:ITestSubject, evaluator:IEvaluator):
-        self.test_subject = test_subject
+class ExpectationTester():
+    def __init__(self, subject:ISubject, evaluator:IEvaluator):
+        self.test_subject = subject
         self.evaluator = evaluator
 
-    def test_one(self, test_case:PromptTestCase):
-        result = self.test_subject.run_test(test_case)
-        evaluation = self.evaluator.validate(result)
-        return evaluation
-    
-    def test(self, test_cases:Collection[PromptTestCase]):
-        return [self.test_one(test_case) for test_case in test_cases]
+    def test_one(self, case:ExpectationCase) -> TestResult:
+        response = self.test_subject.respond(case.prompt)
+        eval = self.evaluator.validate(case.prompt, case.expectation, response)
+        result = TestResult(case, response, eval.code, eval.explanation)
+        return result

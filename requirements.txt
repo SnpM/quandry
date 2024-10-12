@@ -1,2 +1,8 @@
 openai==1.44.1
 pandas==2.2.2
+google-generativeai
+
+# Testing and build requirements
+build
+setuptools
+pytest
