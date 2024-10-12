@@ -35,7 +35,7 @@ class Evaluation():
     def __str__(self):
         return json.dumps(self.__dict__)
 
-class TestResult():
+class CaseResult():
     name:str
     """Name of the Test"""
     desc:str
@@ -80,8 +80,8 @@ class ExpectationTester():
         self.test_subject = subject
         self.evaluator = evaluator
 
-    def test_one(self, case:ExpectationCase) -> TestResult:
+    def test_one(self, case:ExpectationCase) -> CaseResult:
         response = self.test_subject.respond(case.prompt)
         eval = self.evaluator.validate(case.prompt, case.expectation, response)
-        result = TestResult(case, response, eval.code, eval.explanation)
+        result = CaseResult(case, response, eval.code, eval.explanation)
         return result

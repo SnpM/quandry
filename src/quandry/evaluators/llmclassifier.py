@@ -4,56 +4,45 @@ import json
 import google.generativeai as genai
 REUSE_THREAD = False
 from typing import Tuple
+from enum import Enum
 
-# Ensure keys are loaded and work
+# Ensure key loaded
 import keys as keys
 assert hasattr(keys, 'KEY_OpenAI'), "OpenAI API key not found in keys.py"
 assert hasattr(keys, 'KEY_GeminiAPI'), "Gemini API key not found in keys.py"
 
+def parse_response(response: str) -> Tuple[EvalCode, str]:
+    parsed = response.split('%')
+    if len(parsed) != 2:
+        return EvalCode.ERROR, f"API response invalid: `{response}`"
 
-from enum import Enum
-class LlmClassifierBackend(Enum):
-    Gemini = 1
-    ChatGPT = 2
-class LlmClassifier(IEvaluator):    
-    def __init__(self, backend:LlmClassifierBackend = LlmClassifierBackend.Gemini):
-        self.backend = backend
-            
-    def validate(self, prompt:str, expectation:str, response:str) -> Evaluation:
-        if self.backend == LlmClassifierBackend.ChatGPT:
-            (evalcode, explanation) = type(self)._send_chatgpt(prompt, expectation, response)
-        elif self.backend == LlmClassifierBackend.Gemini:
-            (evalcode, explanation) = type(self)._send_gemini(prompt, expectation, response)
+    evaluation, explanation = parsed
+    match evaluation:
+        case 'ERROR':
+            return EvalCode.ERROR, explanation
+        case 'PASS':
+            return EvalCode.PASS, explanation
+        case 'FAIL':
+            return EvalCode.FAIL, explanation
+    return EvalCode.ERROR, f"Decision invalid: `{response}`"
+
+class LlmClassifier_Gemini(IEvaluator):
+    def validate(self, prompt: str, expectation: str, response: str) -> Evaluation:
+        evalcode, explanation = self._send_gemini(prompt, expectation, response)
         return Evaluation(evalcode, explanation)
-    
-    def parse_response(response:str) -> Tuple[EvalCode,str]:
-        (evaluation, explanation) = parsed = response.split('%')
-        if (len(parsed) != 2):
-            return (EvalCode.ERROR, f"API response invalid: `{response}`")
-        
-        match parsed[0]:
-            case 'ERROR':
-                return (EvalCode.ERROR, parsed[1])
-            case 'PASS':
-                return (EvalCode.PASS, parsed[1])
-            case 'FAIL':
-                return (EvalCode.FAIL, parsed[1])
-        
-        return (EvalCode.ERROR, f"Decision invalid: `{response}`")
-        
-            
-    def _send_gemini(prompt, expectation, response) -> Tuple[str,str]:
-        static = LlmClassifier
-        if not hasattr(static,'gemini_configured'):
-            genai.configure(api_key=keys.KEY_GeminiAPI) 
+
+    def _send_gemini(self, prompt, expectation, response) -> Tuple[str, str]:
+        static = LlmClassifier_Gemini
+        if not hasattr(static, 'gemini_configured'):
+            genai.configure(api_key=keys.KEY_GeminiAPI)
             static.gemini_configured = True
-            
+
         config = genai.GenerationConfig(
             temperature=0.1,
             top_p=0.5,
             top_k=30,
         )
-        
+
         safety_settings = [
             {
                 "category": "HARM_CATEGORY_HARASSMENT",
@@ -73,27 +62,30 @@ class LlmClassifier(IEvaluator):
             },
         ]
 
-        # Select the 'gemini-1.5-flash' model
-        model = genai.GenerativeModel("gemini-1.5-flash",generation_config=config,system_instruction=instruction)
-        
-        
-        content = json.dumps({"Prompt": prompt,"Response":response, "Expectation":expectation})
-        response = model.generate_content(content,safety_settings=safety_settings)
+        model = genai.GenerativeModel("gemini-1.5-flash", generation_config=config, system_instruction=instruction)
+
+        content = json.dumps({"Prompt": prompt, "Response": response, "Expectation": expectation})
+        response = model.generate_content(content, safety_settings=safety_settings)
         if response._done:
-            return LlmClassifier.parse_response(response.candidates[0].content.parts[0].text)
+            return parse_response(response.candidates[0].content.parts[0].text)
         else:
-            return (EvalCode.ERROR, f"API query failed with error `{response.error}`")
-        
-    def _send_chatgpt(prompt, expectation, response) -> tuple[str,str]:
-        static = LlmClassifier
+            return EvalCode.ERROR, f"API query failed with error `{response.error}`"
+
+
+class LlmClassifier_ChatGPT(IEvaluator):
+    def validate(self, prompt: str, expectation: str, response: str) -> Evaluation:
+        evalcode, explanation = self._send_chatgpt(prompt, expectation, response)
+        return Evaluation(evalcode, explanation)
+
+    def _send_chatgpt(self, prompt, expectation, response) -> Tuple[str, str]:
+        static = LlmClassifier_ChatGPT
         if not hasattr(static, 'client'):
             static.client = openai.Client(api_key=keys.KEY_OpenAI)
             if REUSE_THREAD:
                 static.thread = static.client.beta.threads.create()
             static.assistant = static.client.beta.assistants.retrieve("asst_LFWBou3GfbVZyNQGwUpLslZi")
-            
-        content = json.dumps({"Prompt": prompt,"Response":response, "Expectation":expectation})
-        static=LlmClassifier
+
+        content = json.dumps({"Prompt": prompt, "Response": response, "Expectation": expectation})
         client = static.client
         if REUSE_THREAD:
             thread = static.thread
@@ -110,17 +102,17 @@ class LlmClassifier(IEvaluator):
         run = client.beta.threads.runs.create_and_poll(
             thread_id=thread.id,
             assistant_id=assistant.id
-            )
-        
-        if run.status == 'completed': 
+        )
+
+        if run.status == 'completed':
             messages = client.beta.threads.messages.list(
                 thread_id=thread.id
             )
-            response:str = messages.data[0].content[0].text.value
-            return LlmClassifier.parse_response(response)
+            response: str = messages.data[0].content[0].text.value
+            return parse_response(response)
         else:
             print("Failure: " + run.status + " | " + run.error)
-            return (EvalCode.ERROR,f"API query failed with error `{run.error}`")
+            return EvalCode.ERROR, f"API query failed with error `{run.error}`"
 
 """ 
 asst_LFWBou3GfbVZyNQGwUpLslZi

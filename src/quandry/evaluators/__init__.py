@@ -1,1 +1,1 @@
-from quandry.evaluators.llmclassifier import LlmClassifier, LlmClassifierBackend
+from quandry.evaluators.llmclassifier import LlmClassifier_ChatGPT, LlmClassifier_Gemini

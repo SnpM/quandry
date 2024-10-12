@@ -6,29 +6,29 @@ import pytest
 
 from quandry.classes import *
 from quandry.testsubjects import VanillaChatGPT
-from quandry.evaluators import LlmClassifier, LlmClassifierBackend
+from quandry.evaluators import LlmClassifier_Gemini, LlmClassifier_ChatGPT
 
 
 def test_test_one():
-    test = ExpectationTester(VanillaChatGPT(), LlmClassifier())
+    test = ExpectationTester(VanillaChatGPT(), LlmClassifier_Gemini())
     result = test.test_one(ExpectationCase("What is the capital of France?",
                expect="The response should correctly convey Paris"))
 
     assert result.evalcode == EvalCode.PASS
 
 def test_gemini_classifier():
-    test = ExpectationTester(VanillaChatGPT(), LlmClassifier(LlmClassifierBackend.Gemini))
+    test = ExpectationTester(VanillaChatGPT(), LlmClassifier_Gemini())
     result = test.test_one(ExpectationCase("What is the capital of France?",
         expect="The response should correctly convey Paris"))
 
-    assert result.evaluation == EvalCode.PASS
+    assert result.evalcode == EvalCode.PASS
 
 def test_chatgptclassifier():
-    test = ExpectationTester(VanillaChatGPT(), LlmClassifier(LlmClassifierBackend.ChatGPT))
+    test = ExpectationTester(VanillaChatGPT(), LlmClassifier_ChatGPT())
     result = test.test_one(ExpectationCase("What is the capital of France?",
         expect="The response should correctly convey Paris"))
 
-    assert result.evaluation == EvalCode.PASS
+    assert result.evalcode == EvalCode.PASS
 
 
 """
