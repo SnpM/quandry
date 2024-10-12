@@ -1,1 +1,1 @@
-from quandry.evaluators.llmclassifier import LlmClassifier
+from quandry.evaluators.llmclassifier import LlmClassifier, LlmClassifierBackend
