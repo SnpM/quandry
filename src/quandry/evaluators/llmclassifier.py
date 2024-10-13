@@ -38,10 +38,11 @@ class LlmClassifier_Gemini(IEvaluator):
         genai.configure(api_key=keys.KEY_GeminiAPI)
         static.gemini_configured = True
         config = genai.GenerationConfig(
-            temperature=0.1,
+            temperature=0.2,
             top_p=0.5,
             top_k=30,
         )
+        # Define safety settings so nothing is blocked
         static.safety_settings = [
             {
                 "category": "HARM_CATEGORY_HARASSMENT",
