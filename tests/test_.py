@@ -30,6 +30,43 @@ def test_chatgptclassifier():
 
     assert result.evalcode == EvalCode.PASS
 
+def test_async_test_one():
+    tester = ExpectationTester(VanillaChatGPT(), LlmClassifier_Gemini())
+    result = asyncio.run(tester.test_one_async(ExpectationCase("What is the capital of France?",
+               expect="The response should correctly convey Paris")))
+
+    assert result.evalcode == EvalCode.PASS
+
+def test_batch_gemini():
+    cases = [
+        ExpectationCase("What is the capital of France?",
+            expect="The response should correctly convey Paris"),
+        ExpectationCase("What is the capital of Germany?",
+            expect="The response should correctly convey Berlin"),
+        ExpectationCase("What is the capital of Italy?",
+            expect="The response should correctly convey Rome"),
+        ExpectationCase("What is the capital of Spain?",
+            expect="The response should correctly convey Madrid"),
+        ExpectationCase("What is the capital of Portugal?",
+            expect="The response should correctly convey Lisbon"),
+    ] * 5
+
+    # Create a mock subject that responds correctly to cases for capitals of countries
+    class MockSubject(ISubject):
+        def respond(self, prompt: str) -> str:
+            responses = {
+            "What is the capital of France?": "Paris",
+            "What is the capital of Germany?": "Berlin",
+            "What is the capital of Italy?": "Rome",
+            "What is the capital of Spain?": "Madrid",
+            "What is the capital of Portugal?": "Lisbon",
+            }
+            return responses.get(prompt, "I don't know")
+        
+    tester = ExpectationTester(MockSubject(), LlmClassifier_Gemini())
+    results = tester.test_batch(cases)
+
+    assert all([result.evalcode == EvalCode.PASS for result in results])
 
 """
 @pytest.mark.benchmark(
