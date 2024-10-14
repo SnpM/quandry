@@ -5,6 +5,8 @@ sys.path.append(os.getcwd())
 import streamlit as st
 import pandas as pd
 from quandry.classes import *
+from quandry.evaluators import LlmClassifier_Gemini
+from quandry.subjects import VanillaChatGPT
 from typing import *
 
 import demo.mock as mock
@@ -49,7 +51,7 @@ def main():
 
     #====Select Target====
     st.subheader("Configure Subject")
-    subject_options = [mock.CapitalTriviaSubject, mock.HumanSubject]
+    subject_options = [mock.CapitalTriviaSubject, mock.HumanSubject, VanillaChatGPT]
 
     if "subject_idx" not in st.session_state:
         st.session_state["subject_idx"] = 0
@@ -108,7 +110,7 @@ def main():
     st.divider()
     #====Select Evaluator====
     st.subheader("Configure Evaluator")
-    evaluator_options = [mock.CapitalTriviaEvaluator]
+    evaluator_options = [mock.CapitalTriviaEvaluator, LlmClassifier_Gemini]
 
     if "evaluator_idx" not in st.session_state:
         st.session_state["evaluator_idx"] = 0

@@ -4,11 +4,13 @@ import json
 import google.generativeai as genai
 from typing import Tuple
 from enum import Enum
+import os
+import asyncio
+from quandry.utils import static_init
 
-# Ensure key loaded
-import keys as keys
-assert hasattr(keys, 'KEY_OpenAI'), "OpenAI API key not found in keys.py"
-assert hasattr(keys, 'KEY_GeminiAPI'), "Gemini API key not found in keys.py"
+
+ENV_GEMINI_API_KEY = "GEMINI_API_KEY"
+ENV_OPENAI_API_KEY = "OPENAI_API_KEY"
 
 def parse_response(response: str) -> Evaluation:
     response = response.strip()
@@ -32,10 +34,13 @@ def parse_response(response: str) -> Evaluation:
 def get_case_content(prompt: str, expectation: str, response: str) -> str:
     return json.dumps({"Prompt": prompt, "Response": response, "Expectation": expectation})
 
+@static_init
 class LlmClassifier_Gemini(IEvaluator):
+    @classmethod
     def static_init():
         static = LlmClassifier_Gemini
-        genai.configure(api_key=keys.KEY_GeminiAPI)
+        gemini_key = os.environ[ENV_GEMINI_API_KEY]
+        genai.configure(api_key=gemini_key)
         static.gemini_configured = True
         config = genai.GenerationConfig(
             temperature=0.2,
@@ -69,7 +74,6 @@ class LlmClassifier_Gemini(IEvaluator):
             safety_settings=static.safety_settings,
             system_instruction=static.instruction
         )
-
 
 
     def evaluate(self, prompt: str, expectation: str, response: str) -> Evaluation:
@@ -118,15 +122,20 @@ class LlmClassifier_Gemini(IEvaluator):
         evals = [parse_response(response) for response in responses]
         return evals
 
-
+@static_init
 class LlmClassifier_ChatGPT(IEvaluator):
+    def __init__(self):
+        type(self).static_init()
+    @classmethod
     def static_init():
         static = LlmClassifier_ChatGPT
-        static.client = openai.Client(api_key=keys.KEY_OpenAI)
+        openai_key = os.environ[ENV_OPENAI_API_KEY]
+        static.client = openai.Client(api_key=openai_key)
         static.REUSE_THREAD = False
         if static.REUSE_THREAD:
             static.thread = static.client.beta.threads.create()
         static.assistant = static.client.beta.assistants.retrieve("asst_LFWBou3GfbVZyNQGwUpLslZi")
+        static.initialized = True
 
     def evaluate(self, prompt: str, expectation: str, response: str) -> Evaluation:
         eval = self._send_chatgpt(prompt, expectation, response)
