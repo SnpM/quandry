@@ -3,7 +3,7 @@ sys.path.append('./src')
 
 from quandry.classes import *
 from pprint import pprint
-from quandry.testsubjects.vanilla_chatgpt import VanillaChatGPT
+from quandry.subjects.vanilla_chatgpt import VanillaChatGPT
 from quandry.evaluators import LlmClassifier
 import pandas as pd
 import quandry.pandas_util as pu
@@ -28,7 +28,7 @@ if TEST_SEND_CHATGPT:
 
 
 if TEST_VANILLA_CHATGPT:
-    from quandry.testsubjects.vanilla_chatgpt import VanillaChatGPT
+    from quandry.subjects.vanilla_chatgpt import VanillaChatGPT
     vanilla = VanillaChatGPT()
     print(vanilla.respond("What is the capital of France?"))
     test_case = ExpectationCase(

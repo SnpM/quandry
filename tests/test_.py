@@ -5,7 +5,7 @@
 import pytest
 
 from quandry.classes import *
-from quandry.testsubjects import VanillaChatGPT
+from quandry.subjects import VanillaChatGPT
 from quandry.evaluators import LlmClassifier_Gemini, LlmClassifier_ChatGPT
 
 
