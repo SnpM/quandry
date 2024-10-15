@@ -3,7 +3,7 @@ sys.path.append('./src')
 
 from quandry.classes import *
 from pprint import pprint
-from quandry.subjects.vanilla_chatgpt import VanillaChatGPT
+from quandry.subjects.openaisubject import OpenAiSubject
 from quandry.evaluators import LlmClassifier
 import pandas as pd
 import quandry.pandas_util as pu
@@ -28,8 +28,8 @@ if TEST_SEND_CHATGPT:
 
 
 if TEST_VANILLA_CHATGPT:
-    from quandry.subjects.vanilla_chatgpt import VanillaChatGPT
-    vanilla = VanillaChatGPT()
+    from quandry.subjects.openaisubject import OpenAiSubject
+    vanilla = OpenAiSubject()
     print(vanilla.respond("What is the capital of France?"))
     test_case = ExpectationCase(
                 prompt= "What is the capital of France?",
@@ -42,7 +42,7 @@ if TEST_VANILLA_CHATGPT:
 
 if TEST_WORKFLOW:
 
-    prompt_test = ExpectationTester(VanillaChatGPT(), LlmClassifier())
+    prompt_test = ExpectationTester(OpenAiSubject(), LlmClassifier())
     eval = prompt_test.test_one(ExpectationCase("What is the capital of France?",
                expect="The capital of France, Paris."))    
     
@@ -53,7 +53,7 @@ if TEST_WORKFLOW_MULTI:
 
     test_cases = pu.df2cases(pd.read_csv("./examples/expectation_prompts.csv").head(5))
 
-    prompt_test = ExpectationTester(VanillaChatGPT(), LlmClassifier())
+    prompt_test = ExpectationTester(OpenAiSubject(), LlmClassifier())
     results = pu.eval2df(prompt_test.test(test_cases))
 
     print(results)

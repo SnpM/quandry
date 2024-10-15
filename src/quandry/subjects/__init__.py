@@ -1,1 +1,1 @@
-from quandry.subjects.vanilla_chatgpt import VanillaChatGPT
+from quandry.subjects.openaisubject import OpenAiSubject

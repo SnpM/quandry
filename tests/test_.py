@@ -5,33 +5,33 @@
 import pytest
 
 from quandry.classes import *
-from quandry.subjects import VanillaChatGPT
+from quandry.subjects import OpenAiSubject
 from quandry.evaluators import LlmClassifier_Gemini, LlmClassifier_ChatGPT
 
 
 def test_test_one():
-    test = ExpectationTester(VanillaChatGPT(), LlmClassifier_Gemini())
+    test = ExpectationTester(OpenAiSubject(), LlmClassifier_Gemini())
     result = test.test_one(ExpectationCase("What is the capital of France?",
                expect="The response should correctly convey Paris"))
 
     assert result.evalcode == EvalCode.PASS
 
 def test_gemini_classifier():
-    test = ExpectationTester(VanillaChatGPT(), LlmClassifier_Gemini())
+    test = ExpectationTester(OpenAiSubject(), LlmClassifier_Gemini())
     result = test.test_one(ExpectationCase("What is the capital of France?",
         expect="The response should correctly convey Paris"))
 
     assert result.evalcode == EvalCode.PASS
 
 def test_chatgptclassifier():
-    test = ExpectationTester(VanillaChatGPT(), LlmClassifier_ChatGPT())
+    test = ExpectationTester(OpenAiSubject(), LlmClassifier_ChatGPT())
     result = test.test_one(ExpectationCase("What is the capital of France?",
         expect="The response should correctly convey Paris"))
 
     assert result.evalcode == EvalCode.PASS
 
 def test_async_test_one():
-    tester = ExpectationTester(VanillaChatGPT(), LlmClassifier_Gemini())
+    tester = ExpectationTester(OpenAiSubject(), LlmClassifier_Gemini())
     result = asyncio.run(tester.test_one_async(ExpectationCase("What is the capital of France?",
                expect="The response should correctly convey Paris")))
 
