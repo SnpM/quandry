@@ -221,7 +221,6 @@ class LlmClassifier_ChatGPT(IEvaluator):
         )
 
         run = client.beta.threads.runs.create_and_poll(
-            model = "gpt-4o",
             thread_id=thread.id,
             assistant_id=assistant.id
         )
