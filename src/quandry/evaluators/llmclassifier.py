@@ -4,7 +4,7 @@ ChatGPT Configuration
 Temperature: .1
 Top P: .1
 """
-assistant_id = "asst_rCBtFCcUZhpU5Bovg8TNuzFM"
+_assistant_name = "LLM Expectation Classifier"
 
 _instruction = \
 """You evaluate whether a response to a prompt meets an expectation for the response to that prompt. 
@@ -200,7 +200,23 @@ class LlmClassifier_ChatGPT(IEvaluator):
         openai_key = os.environ[ENV_OPENAI_API_KEY]
         static.client:openai.Client = openai.Client(api_key=openai_key)        
             
-        static.assistant = static.client.beta.assistants.retrieve(assistant_id)
+        # Find assistant with name _assistant_name
+        assistants = static.client.beta.assistants.list()
+        assistant = None
+        for a in assistants.data:
+            if a.name == _assistant_name:
+                assistant = a
+                break
+        if assistant is None:
+            assistant = static.client.beta.assistants.create(
+                name=_assistant_name,
+                description="Evaluates responses to prompts based on given expectations.",
+                instructions=_instruction,
+                model="gpt-4o-mini",
+                temperature=0.2,
+                top_p=0.5,
+            )
+                
         static.initialized = True
 
     def evaluate(self, prompt: str, expectation: str, response: str) -> Evaluation:
