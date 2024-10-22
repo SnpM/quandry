@@ -216,6 +216,7 @@ class LlmClassifier_ChatGPT(IEvaluator):
                 temperature=0.2,
                 top_p=0.5,
             )
+        static.assistant = assistant
                 
         static.initialized = True
 
