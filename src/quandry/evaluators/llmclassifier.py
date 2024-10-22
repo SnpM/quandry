@@ -212,7 +212,7 @@ class LlmClassifier_ChatGPT(IEvaluator):
                 name=_assistant_name,
                 description="Evaluates responses to prompts based on given expectations.",
                 instructions=_instruction,
-                model="gpt-4o-mini",
+                model="gpt-4o",
                 temperature=0.2,
                 top_p=0.5,
             )
