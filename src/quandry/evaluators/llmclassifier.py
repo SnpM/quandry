@@ -51,9 +51,9 @@ class LlmClassifier_Gemini(IEvaluator):
         gemini_key = os.environ[ENV_GEMINI_API_KEY]
         genai.configure(api_key=gemini_key)
         static.config = genai.GenerationConfig(
-            temperature=0.2,
-            top_p=0.5,
-            top_k=30,
+            temperature=.5, # Medium temperature to allow for dynamic inputs
+            top_p=0.8, # Lower top_p for more determinism
+            top_k=48 # Medium top_k to allow for explanations
         )
         # Define safety settings so outputs aren't blocked
         static.safety_settings = [
@@ -161,8 +161,8 @@ class LlmClassifier_ChatGPT(IEvaluator):
                 description="Evaluates responses to prompts based on given expectations.",
                 instructions=get_instruction().text,
                 model="gpt-4o",
-                temperature=0.2,
-                top_p=0.5,
+                temperature=0.5, # Medium temperature to allow for dynamic inputs
+                top_p=0.6, # Lower top_p for more determinism
             )
         static.assistant = assistant
                 
