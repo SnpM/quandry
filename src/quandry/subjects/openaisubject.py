@@ -3,6 +3,8 @@ from quandry.classes import ExpectationCase
 import os
 import openai
 from quandry.utils import static_init
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 
 ENV_OPENAI_API_KEY = "KEY_OPENAI"
 
@@ -29,3 +31,21 @@ class OpenAiSubject(ISubject):
             ]
         )
         return completion.choices[0].message.content
+    
+    
+    async def fetch_responses(self, prompts: Collection[str]) -> Collection[str]:
+        loop = asyncio.get_event_loop()
+        semaphore = asyncio.Semaphore(5)
+
+        async def async_respond(prompt):
+            async with semaphore:
+                return await loop.run_in_executor(None, self.respond, prompt)
+
+        with ThreadPoolExecutor() as executor:
+            tasks = [async_respond(prompt) for prompt in prompts]
+            responses = await asyncio.gather(*tasks)
+            return responses
+    
+    def respond_batch(self, prompts):
+        responses = asyncio.run(self.fetch_responses(prompts))
+        return responses
