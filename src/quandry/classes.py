@@ -32,6 +32,8 @@ class CaseResponse():
 
 from enum import IntEnum
 import asyncio
+
+@final
 class EvalCode(IntEnum):
     ERROR=0
     PASS=1
@@ -39,6 +41,7 @@ class EvalCode(IntEnum):
     def __str__(self):
         return self.name
 
+@final
 class Evaluation():
     code:EvalCode
     explanation:str
@@ -48,6 +51,7 @@ class Evaluation():
     def __str__(self):
         return json.dumps(self.__dict__)
 
+@final
 class CaseResult():
     name:str
     """Name of the Test"""
@@ -87,7 +91,7 @@ class IEvaluator(ABC):
         # Warning: This is the default serial implementation
         warnings.warn("Using default serial implementation for evaluate_batch. This may not be efficient for large batches.", UserWarning)
         return [self.evaluate(cr.prompt, cr.expectation, cr.response) for cr in case_responses]
-    
+       
 class ISubject(ABC):
     @abstractmethod
     def respond(self, prompt:str) -> str:
