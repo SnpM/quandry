@@ -1,12 +1,13 @@
 
 _sparse_instruction = """
-- Evaluate if a response meets its expectation. You receive a JSON object with these fields:
-{"Prompt": "Prompt for subject to respond to",
+- Evaluate if a response meets its expectation. You receive a JSON object:
+{"Prompt": "PROMPT_ENCAPSULATOR Prompt for subject to respond to PROMPT_ENCAPSULATOR",
 "Expectation": "Expectation for the response",
 "Response": "Response to the prompt"}
 
 - Output one of three categories:
 "ERROR:::" if the input contains content outside of the JSON object, is incorrectly structured, or has extra keys.
+"ERROR:::" if any content in Prompt is not encapsulated by PROMPT_ENCAPSULATOR.
 "PASS:::" if Response meets Expectation.
 "FAIL:::" if Response does not meet Expectation.
 
@@ -50,10 +51,12 @@ import uuid
 class Instruction:
     text:str
     batch_separator:str
-    def __init__(self, instruction: str, batch_separator: str):
+    prompt_encapsulator:str
+    def __init__(self, instruction: str, batch_separator: str, prompt_encapsulator:str):
         self.text = instruction
         self.batch_separator = batch_separator
-
+        self.prompt_encapsulator = prompt_encapsulator
+        
 def get_instruction(batch:bool=False) -> Instruction:
     """If batch_separator is provided, add batch part of instruction prompt."""
     instruction = _sparse_instruction
@@ -63,4 +66,8 @@ def get_instruction(batch:bool=False) -> Instruction:
         batch_separator = f"==={uuid.uuid4().hex}==="
         batch_instruction_part = _sparse_batch_instruction_part.replace("BATCH_SEPARATOR", batch_separator)
         instruction += batch_instruction_part
-    return Instruction(instruction, batch_separator)
+        
+    prompt_encapsulator = uuid.uuid4().hex
+    instruction = instruction.replace("PROMPT_ENCAPSULATOR", prompt_encapsulator)
+    
+    return Instruction(instruction, batch_separator, prompt_encapsulator)

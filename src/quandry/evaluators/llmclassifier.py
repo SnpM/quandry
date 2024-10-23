@@ -4,8 +4,6 @@ ChatGPT Configuration
 Temperature: .1
 Top P: .1
 """
-_assistant_name = "LLM Expectation Classifier"
-
 from quandry import *
 import openai
 import json
@@ -41,7 +39,9 @@ def parse_response(response: str) -> Evaluation:
             explanation = f"Decision invalid: `{response}`"
     return Evaluation(code, explanation)
 
-def get_case_content(prompt: str, expectation: str, response: str) -> str:
+def get_case_content(prompt: str, expectation: str, response: str, prompt_encapsulator:str) -> str:
+    # Encapsulate prompt with nonce for security
+    prompt = f"{prompt_encapsulator} {prompt} {prompt_encapsulator}"
     return json.dumps({"Prompt": prompt, "Response": response, "Expectation": expectation})
 
 @static_init
@@ -84,9 +84,6 @@ class LlmClassifier_Gemini(IEvaluator):
         generation_config=cls.config,
         safety_settings=cls.safety_settings,
         system_instruction=instruction)
-    
-        
-
 
     def evaluate(self, prompt: str, expectation: str, response: str) -> Evaluation:
         eval = self._send_gemini(prompt, expectation, response)
@@ -94,12 +91,13 @@ class LlmClassifier_Gemini(IEvaluator):
 
     def _send_gemini(self, prompt, expectation, response) -> Evaluation:
 
-        content = json.dumps({"Prompt": prompt, "Response": response, "Expectation": expectation})
+        instruction = get_instruction()
+        content = get_case_content(prompt, expectation, response, instruction.prompt_encapsulator)
         
         from google.api_core.exceptions import ResourceExhausted
         from quandry.exceptions import ResourceExhaustedException
         
-        model = LlmClassifier_Gemini.get_model(get_instruction().text)
+        model = LlmClassifier_Gemini.get_model(instruction.text)
 
         # Google API could return a ResourceExhausted error; catch and return our own exception
         try:
@@ -116,11 +114,10 @@ class LlmClassifier_Gemini(IEvaluator):
         return evals
     
     def _send_gemini_batch(self, case_responses: Collection[CaseResponse]) -> Collection[Evaluation]:
-        content = [get_case_content(cr.prompt, cr.expectation, cr.response) for cr in case_responses]
+        instruction = get_instruction(batch=True)
+        content = [get_case_content(cr.prompt, cr.expectation, cr.response, instruction.prompt_encapsulator)
+                   for cr in case_responses]
     
-        
-        instruction = get_instruction(True)
-        
         # Parse content by splitting with batch separator
         content = f"\n{instruction.batch_separator}\n".join(content) 
         
@@ -148,57 +145,49 @@ class LlmClassifier_ChatGPT(IEvaluator):
         openai_key = os.environ[ENV_OPENAI_API_KEY]
         static.client:openai.Client = openai.Client(api_key=openai_key)        
         
-        # Find assistant with name _assistant_name
-        assistants = static.client.beta.assistants.list()
-        assistant = None
-        for a in assistants.data:
-            if a.name == _assistant_name:
-                assistant = a
-                break
-        if assistant is None:
-            assistant = static.client.beta.assistants.create(
-                name=_assistant_name,
-                description="Evaluates responses to prompts based on given expectations.",
-                instructions=get_instruction().text,
-                model="gpt-4o",
-                temperature=0.5, # Medium temperature to allow for dynamic inputs
-                top_p=0.6, # Lower top_p for more determinism
-            )
-        static.assistant = assistant
+        static.model_config = {
+            "temperature": 0.5,
+            "top_p": 0.6,
+            "model": "gpt-4o"
+        }
                 
         static.initialized = True
 
     def evaluate(self, prompt: str, expectation: str, response: str) -> Evaluation:
         eval = self._send_chatgpt(prompt, expectation, response)
         return eval
+    
+    def package_message(self, instruction:str, message:str) -> List[Dict[str,Any]]:
+        return [{
+            "role": "system",
+            "content": [{
+                "type": "text",
+                "text": instruction
+                }]},
+            {"role": "user",
+            "content": [{
+                "type": "text",
+                "text": message
+                }]},
+        ],
 
     def _send_chatgpt(self, prompt, expectation, response) -> Evaluation:
-        static = LlmClassifier_ChatGPT         
-        content = json.dumps({"Prompt": prompt, "Response": response, "Expectation": expectation})
-        client = static.client
-        assistant = static.assistant
-        thread = static.client.beta.threads.create()
-
-        client.beta.threads.messages.create(
-            thread_id=thread.id,
-            content=content,
-            role="user"
-        )
-
-        run = client.beta.threads.runs.create_and_poll(
-            thread_id=thread.id,
-            assistant_id=assistant.id
-        )
-
-        if run.status == 'completed':
-            messages = client.beta.threads.messages.list(
-                thread_id=thread.id
+        static = LlmClassifier_ChatGPT
+        instruction = get_instruction()
+        content = get_case_content(prompt, expectation, response, instruction.prompt_encapsulator)
+        client:openai.Client = static.client   
+        try:
+            completion = openai.chat.completions.create(
+                messages=self.package_message(instruction.text, content),
+                response_format={"type":"text"},
+                **static.model_config
             )
-            response: str = messages.data[0].content[0].text.value
+            response: str = completion.choices[0].message.content[0].text.value
             return parse_response(response)
-        else:
-            print("Failure: " + run.status + " | " + run.error)
-            return EvalCode.ERROR, f"API query failed with error `{run.error}`"
+        except openai.OpenAIError as e:
+            # Debug error
+            print("Failure: " + e.error)
+            return EvalCode.ERROR, f"API query failed with error `{e.error}`"
 
     def evaluate_batch(self, case_responses: Collection[CaseResponse]) -> Collection[Evaluation]:
         evals = self._send_chatgpt_batch(case_responses)
@@ -206,37 +195,27 @@ class LlmClassifier_ChatGPT(IEvaluator):
 
     def _send_chatgpt_batch(self, case_responses: Collection[CaseResponse]) -> Collection[Evaluation]:
         static = LlmClassifier_ChatGPT
-        content = [get_case_content(cr.prompt, cr.expectation, cr.response) for cr in case_responses]
+        
+        instruction = get_instruction(batch=True)
+        content = [get_case_content(cr.prompt, cr.expectation, cr.response,instruction.prompt_encapsulator)
+                   for cr in case_responses]
 
-        instruction = get_instruction()
 
         # Split content by batch separator
         content = f"\n{instruction.batch_separator}\n".join(content)
         client:openai.Client = static.client
-        assistant = static.assistant
-        thread = static.client.beta.threads.create()
-        # Add content to thread
-        client.beta.threads.messages.create(
-            thread_id=thread.id,
-            content=content,
-            role="user"
-        )
         
         print(instruction.text)
         print(content)
-        run = client.beta.threads.runs.create_and_poll(
-            thread_id=thread.id,
-            assistant_id=assistant.id,
-            instructions=instruction.text,
-            model = "gpt-4o"
-        )
-
-        if run.status == 'completed':
-            print("ranned")
-            messages = client.beta.threads.messages.list(
-                thread_id=thread.id
+        
+        try:
+            completion = client.chat.completions.create(
+                messages=self.package_message(instruction.text, content),
+                response_format={"type":"text"},
+                **static.model_config
             )
-            response: str = messages.data[0].content[0].text.value
+            response: str = completion.choices[0].message.content[0].text.value
+            
             responses = response.split(instruction.batch_separator)
             responses = [r.strip() for r in responses if r]
             if len(responses) != len(case_responses):
@@ -244,6 +223,6 @@ class LlmClassifier_ChatGPT(IEvaluator):
             
             evals = [parse_response(response) for response in responses]
             return evals
-        else:
-            print("Failure: " + run.status + " | " + run.error)
-            return [Evaluation(EvalCode.ERROR, f"API query failed with error `{run.error}`")]
+        except openai.OpenAIError as e:
+            print(f"Failure: {e}")
+            return [Evaluation(EvalCode.ERROR, f"API query failed with error `{e}`")]
