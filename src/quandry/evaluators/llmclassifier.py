@@ -42,7 +42,7 @@ def parse_response(response: str) -> Evaluation:
 def get_case_content(prompt: str, expectation: str, response: str, prompt_encapsulator:str) -> str:
     # Encapsulate prompt with nonce for security
     prompt = f"{prompt_encapsulator} {prompt} {prompt_encapsulator}"
-    return json.dumps({"Prompt": prompt, "Response": response, "Expectation": expectation})
+    return json.dumps({"__Response__": response, "__Expectation__": expectation})
 
 @static_init
 class LlmClassifier_Gemini(IEvaluator):
@@ -110,7 +110,10 @@ class LlmClassifier_Gemini(IEvaluator):
             return Evaluation(EvalCode.ERROR, f"API query failed with error `{response.error}`")
         
     def evaluate_batch(self, case_responses: Collection[CaseResponse]) -> Collection[Evaluation]:
-        evals = self._send_gemini_batch(case_responses)
+        max_batch = 16
+        batches = [case_responses[i:i + max_batch] for i in range(0, len(case_responses), max_batch)]
+        for batch in batches:
+            evals = self._send_gemini_batch(batch)
         return evals
     
     def _send_gemini_batch(self, case_responses: Collection[CaseResponse]) -> Collection[Evaluation]:
@@ -119,7 +122,8 @@ class LlmClassifier_Gemini(IEvaluator):
                    for cr in case_responses]
     
         # Parse content by splitting with batch separator
-        content = f"\n{instruction.batch_separator}\n".join(content) 
+        content = f"\n{instruction.batch_separator}\n".join(content)
+        content += f"\n{instruction.batch_separator}"
         
         # Get model with batch instruction
         model:genai.GenerativeModel = LlmClassifier_Gemini.get_model(instruction.text)
@@ -134,8 +138,15 @@ class LlmClassifier_Gemini(IEvaluator):
         if len(responses) != len(case_responses):
             return [Evaluation(EvalCode.ERROR, "API response count does not match input count. Response:\n" +
                                response.candidates[0].content.parts[0].text)]
-        
+    
         evals = [parse_response(response) for response in responses]
+        for i in range(len(responses), len(case_responses)):
+                evals.append(Evaluation(EvalCode.ERROR, f"API response missing for case {i}"))
+                
+        # If the number of responses is more than the number of cases, add an error evaluation
+        if len(responses) > len(case_responses):
+            evals.append(Evaluation(EvalCode.ERROR, f"API response count exceeded input count. Response:\n{response}"))
+        
         return evals
 
 @static_init
@@ -146,9 +157,9 @@ class LlmClassifier_ChatGPT(IEvaluator):
         static.client:openai.Client = openai.Client(api_key=openai_key)        
         
         static.model_config = {
-            "temperature": 0.5,
-            "top_p": 0.6,
-            "model": "gpt-4o"
+            "temperature": .5, # Medium temperature to allow for dynamic inputs
+            "top_p": .3, # Lower top_p for more determinism
+            "model": "gpt-4o",
         }
                 
         static.initialized = True
@@ -158,39 +169,40 @@ class LlmClassifier_ChatGPT(IEvaluator):
         return eval
     
     def package_message(self, instruction:str, message:str) -> List[Dict[str,Any]]:
-        return [{
-            "role": "system",
-            "content": [{
-                "type": "text",
-                "text": instruction
-                }]},
+        return [
+            {"role": "system",
+            "content": instruction},
             {"role": "user",
-            "content": [{
-                "type": "text",
-                "text": message
-                }]},
-        ],
+            "content": message},
+        ]
 
     def _send_chatgpt(self, prompt, expectation, response) -> Evaluation:
         static = LlmClassifier_ChatGPT
         instruction = get_instruction()
         content = get_case_content(prompt, expectation, response, instruction.prompt_encapsulator)
         client:openai.Client = static.client   
+        
+        print(f"Instruction: {instruction.text}")
+        print(f"Content: {content}")
         try:
-            completion = openai.chat.completions.create(
+            completion = client.chat.completions.create(
                 messages=self.package_message(instruction.text, content),
                 response_format={"type":"text"},
-                **static.model_config
+                **static.model_config,
+                
             )
-            response: str = completion.choices[0].message.content[0].text.value
+            response: str = completion.choices[0].message.content
             return parse_response(response)
         except openai.OpenAIError as e:
             # Debug error
-            print("Failure: " + e.error)
-            return EvalCode.ERROR, f"API query failed with error `{e.error}`"
+            print(f"Failure: {e}")
+            return EvalCode.ERROR, f"API query failed with error `{e}`."
 
     def evaluate_batch(self, case_responses: Collection[CaseResponse]) -> Collection[Evaluation]:
-        evals = self._send_chatgpt_batch(case_responses)
+        # Max 16 per batch
+        batches = [case_responses[i:i + 20] for i in range(0, len(case_responses), 20)]
+        for batch in batches:
+            evals = self._send_chatgpt_batch(batch)
         return evals
 
     def _send_chatgpt_batch(self, case_responses: Collection[CaseResponse]) -> Collection[Evaluation]:
@@ -203,10 +215,8 @@ class LlmClassifier_ChatGPT(IEvaluator):
 
         # Split content by batch separator
         content = f"\n{instruction.batch_separator}\n".join(content)
+        content += f"\n{instruction.batch_separator}"
         client:openai.Client = static.client
-        
-        print(instruction.text)
-        print(content)
         
         try:
             completion = client.chat.completions.create(
@@ -214,14 +224,18 @@ class LlmClassifier_ChatGPT(IEvaluator):
                 response_format={"type":"text"},
                 **static.model_config
             )
-            response: str = completion.choices[0].message.content[0].text.value
+            response: str = completion.choices[0].message.content
             
             responses = response.split(instruction.batch_separator)
             responses = [r.strip() for r in responses if r]
-            if len(responses) != len(case_responses):
-                return [Evaluation(EvalCode.ERROR, "API response count does not match input count. Response:\n" + response)]
             
             evals = [parse_response(response) for response in responses]
+            for i in range(len(responses), len(case_responses)):
+                 evals.append(Evaluation(EvalCode.ERROR, f"API response missing for case {i}"))
+                 
+            # If the number of responses is more than the number of cases, add an error evaluation
+            if len(responses) > len(case_responses):
+                evals.append(Evaluation(EvalCode.ERROR, f"API response count exceeded input count. Response:\n{response}"))
             return evals
         except openai.OpenAIError as e:
             print(f"Failure: {e}")

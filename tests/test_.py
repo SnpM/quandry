@@ -14,27 +14,31 @@ def test_test_one():
     result = test.test_one(ExpectationCase("What is the capital of France?",
                expect="The response should correctly convey Paris"))
 
-    assert result.evalcode == EvalCode.PASS
+    assert result.evalcode == EvalCode.PASS, result.explanation
 
 def test_gemini_classifier():
     test = ExpectationTester(OpenAiSubject(), LlmClassifier_Gemini())
     result = test.test_one(ExpectationCase("What is the capital of France?",
         expect="The response should correctly convey Paris"))
 
-    assert result.evalcode == EvalCode.PASS
+    assert result.evalcode == EvalCode.PASS, result.explanation
 
 def test_chatgptclassifier():
-    test = ExpectationTester(OpenAiSubject(), LlmClassifier_ChatGPT())
-    result = test.test_one(ExpectationCase("What is the capital of France?",
-        expect="The response should correctly convey Paris"))
-    assert result.evalcode == EvalCode.PASS
+    class mock_subject(ISubject): respond = lambda self, prompt: "The Capital of France is Paris"
+    for i in range(10):
+        test = ExpectationTester(mock_subject(), LlmClassifier_ChatGPT())
+        result = test.test_one(ExpectationCase("What is the capital of France?",
+            expect="The response should convey 'Paris'"))
+        if result.evalcode != EvalCode.PASS:
+            print(result.explanation)
+        assert result.evalcode == EvalCode.PASS, result.explanation
 
 def test_async_test_one():
     tester = ExpectationTester(OpenAiSubject(), LlmClassifier_Gemini())
     result = asyncio.run(tester.test_one_async(ExpectationCase("What is the capital of France?",
                expect="The response should correctly convey Paris")))
 
-    assert result.evalcode == EvalCode.PASS
+    assert result.evalcode == EvalCode.PASS, result.explanation
 
 def test_batch_gemini():
     cases = [
@@ -48,7 +52,10 @@ def test_batch_gemini():
             expect="The response should correctly convey Madrid"),
         ExpectationCase("What is the capital of Portugal?",
             expect="The response should correctly convey Lisbon"),
-    ] * 5
+    ]
+    # Create an array of 20 cases that are randomly selected from cases
+    import random
+    cases = random.choices(cases, k=20)
 
     # Create a mock subject that responds correctly to cases for capitals of countries
     class MockSubject(ISubject):
@@ -65,7 +72,8 @@ def test_batch_gemini():
     tester = ExpectationTester(MockSubject(), LlmClassifier_Gemini())
     results = tester.test_batch(cases)
 
-    assert all([result.evalcode == EvalCode.PASS for result in results])
+    for result in results:
+        assert result.evalcode == EvalCode.PASS, result.explanation
     
 def test_batch_chatgpt():
     cases = [
@@ -96,9 +104,8 @@ def test_batch_chatgpt():
     tester = ExpectationTester(MockSubject(), LlmClassifier_ChatGPT())
     results = tester.test_batch(cases)
     
-    print([x.evalcode for x in results])
-
-    assert all([result.evalcode == EvalCode.PASS for result in results])
+    for result in results:
+        assert result.evalcode == EvalCode.PASS, result.explanation
 
 """
 @pytest.mark.benchmark(
