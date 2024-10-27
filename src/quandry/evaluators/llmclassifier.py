@@ -157,8 +157,9 @@ class LlmClassifier_Gemini(IEvaluator):
 
 @static_init
 class LlmClassifier_ChatGPT(IEvaluator):
-    def __init__(self, model_id:str="gpt-4o"):
+    def __init__(self, model_id:str="gpt-4o", max_batch:int=8):
         self.model_id = model_id
+        self.max_batch = max_batch
     
     @classmethod
     def static_init(static:Type):
@@ -209,7 +210,7 @@ class LlmClassifier_ChatGPT(IEvaluator):
             return EvalCode.ERROR, f"API query failed with error `{e}`."
 
     def evaluate_batch(self, case_responses: Collection[CaseResponse]) -> Collection[Evaluation]:
-        max_batch = 16
+        max_batch = self.max_batch
         batches = [case_responses[i:i + max_batch] for i in range(0, len(case_responses), max_batch)]
         evals = []
         for batch in batches:
