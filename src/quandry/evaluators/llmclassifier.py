@@ -110,10 +110,13 @@ class LlmClassifier_Gemini(IEvaluator):
             return Evaluation(EvalCode.ERROR, f"API query failed with error `{response.error}`")
         
     def evaluate_batch(self, case_responses: Collection[CaseResponse]) -> Collection[Evaluation]:
-        max_batch = 16
+        max_batch = 8
         batches = [case_responses[i:i + max_batch] for i in range(0, len(case_responses), max_batch)]
+        evals = []
         for batch in batches:
-            evals = self._send_gemini_batch(batch)
+            batch_evals = self._send_gemini_batch(batch)
+            evals.extend(batch_evals)
+        
         return evals
     
     def _send_gemini_batch(self, case_responses: Collection[CaseResponse]) -> Collection[Evaluation]:
@@ -123,7 +126,7 @@ class LlmClassifier_Gemini(IEvaluator):
     
         # Parse content by splitting with batch separator
         content = f"\n{instruction.batch_separator}\n".join(content)
-        content += f"\n{instruction.batch_separator}"
+        #content += f"\n{instruction.batch_separator}"
         
         # Get model with batch instruction
         model:genai.GenerativeModel = LlmClassifier_Gemini.get_model(instruction.text)
@@ -199,10 +202,12 @@ class LlmClassifier_ChatGPT(IEvaluator):
             return EvalCode.ERROR, f"API query failed with error `{e}`."
 
     def evaluate_batch(self, case_responses: Collection[CaseResponse]) -> Collection[Evaluation]:
-        # Max 16 per batch
-        batches = [case_responses[i:i + 20] for i in range(0, len(case_responses), 20)]
+        max_batch = 16
+        batches = [case_responses[i:i + max_batch] for i in range(0, len(case_responses), max_batch)]
+        evals = []
         for batch in batches:
-            evals = self._send_chatgpt_batch(batch)
+            batch_evals = self._send_chatgpt_batch(batch)
+            evals.extend(batch_evals)
         return evals
 
     def _send_chatgpt_batch(self, case_responses: Collection[CaseResponse]) -> Collection[Evaluation]:
