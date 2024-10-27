@@ -157,7 +157,7 @@ class LlmClassifier_Gemini(IEvaluator):
 
 @static_init
 class LlmClassifier_ChatGPT(IEvaluator):
-    def __init__(self, model_id:str="gpt-4o", max_batch:int=8):
+    def __init__(self, model_id:str="gpt-4o", max_batch:int=10):
         self.model_id = model_id
         self.max_batch = max_batch
     
