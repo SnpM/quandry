@@ -170,6 +170,7 @@ def test_batch_chatgpt():
     tester = ExpectationTester(MockSubject(), LlmClassifier_ChatGPT())
     results = tester.test_batch(cases)
 
+
     # Assert that all results meet expectations
     for i in range(len(results)):
         result = results[i]

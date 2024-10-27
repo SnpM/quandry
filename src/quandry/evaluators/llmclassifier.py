@@ -42,7 +42,11 @@ def parse_response(response: str) -> Evaluation:
 def get_case_content(prompt: str, expectation: str, response: str, prompt_encapsulator:str) -> str:
     # Encapsulate prompt with nonce for security
     prompt = f"{prompt_encapsulator} {prompt} {prompt_encapsulator}"
-    return json.dumps({"__Response__": response, "__Expectation__": expectation})
+    content = {"__Response__": response, "__Expectation__": expectation}
+    if False:
+        content["__Prompt__"] = prompt
+        
+    return json.dumps(content)
 
 @static_init
 class LlmClassifier_Gemini(IEvaluator):
@@ -51,9 +55,8 @@ class LlmClassifier_Gemini(IEvaluator):
         gemini_key = os.environ[ENV_GEMINI_API_KEY]
         genai.configure(api_key=gemini_key)
         static.config = genai.GenerationConfig(
-            temperature=.5, # Medium temperature to allow for dynamic inputs
-            top_p=0.8, # Lower top_p for more determinism
-            top_k=48 # Medium top_k to allow for explanations
+            temperature=1, # Medium temperature to allow for dynamic inputs
+            top_p=0.5, # Lower top_p for more determinism
         )
         # Define safety settings so outputs aren't blocked
         static.safety_settings = [
@@ -154,19 +157,23 @@ class LlmClassifier_Gemini(IEvaluator):
 
 @static_init
 class LlmClassifier_ChatGPT(IEvaluator):
+    def __init__(self, model_id:str="gpt-4o"):
+        self.model_id = model_id
+    
     @classmethod
     def static_init(static:Type):
         openai_key = os.environ[ENV_OPENAI_API_KEY]
         static.client:openai.Client = openai.Client(api_key=openai_key)        
         
         static.model_config = {
-            "temperature": .5, # Medium temperature to allow for dynamic inputs
-            "top_p": .3, # Lower top_p for more determinism
+            "temperature": 1, # Medium temperature to allow for dynamic inputs
+            "top_p": .5, # Lower top_p for more determinism
             "model": "gpt-4o",
         }
                 
         static.initialized = True
 
+    model_id:str
     def evaluate(self, prompt: str, expectation: str, response: str) -> Evaluation:
         eval = self._send_chatgpt(prompt, expectation, response)
         return eval
