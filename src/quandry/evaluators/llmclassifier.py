@@ -157,9 +157,10 @@ class LlmClassifier_Gemini(IEvaluator):
 
 @static_init
 class LlmClassifier_ChatGPT(IEvaluator):
-    def __init__(self, model_id:str="gpt-4o", max_batch:int=10):
+    def __init__(self, model_id:str="gpt-4o", max_batch:int=5, thread_count:int=4):
         self.model_id = model_id
         self.max_batch = max_batch
+        self.thread_count = thread_count
     
     @classmethod
     def static_init(static:Type):
@@ -200,7 +201,7 @@ class LlmClassifier_ChatGPT(IEvaluator):
                 messages=self.package_message(instruction.text, content),
                 response_format={"type":"text"},
                 **static.model_config,
-                
+                model=self.model_id
             )
             response: str = completion.choices[0].message.content
             return parse_response(response)
@@ -208,14 +209,38 @@ class LlmClassifier_ChatGPT(IEvaluator):
             # Debug error
             print(f"Failure: {e}")
             return EvalCode.ERROR, f"API query failed with error `{e}`."
-
+        
+        
+    # def evaluate_batch(self, case_responses: Collection[CaseResponse]) -> Collection[Evaluation]:
+    #     max_batch = self.max_batch
+    #     batches = [case_responses[i:i + max_batch] for i in range(0, len(case_responses), max_batch)]
+    #     evals = []
+    #     for batch in batches:
+    #         batch_evals = self._send_chatgpt_batch(batch)
+    #         evals.extend(batch_evals)
+    #     return evals
+    
     def evaluate_batch(self, case_responses: Collection[CaseResponse]) -> Collection[Evaluation]:
+        from concurrent.futures import ThreadPoolExecutor, as_completed
         max_batch = self.max_batch
         batches = [case_responses[i:i + max_batch] for i in range(0, len(case_responses), max_batch)]
+
+        # Use ThreadPoolExecutor for multithreading
         evals = []
-        for batch in batches:
-            batch_evals = self._send_chatgpt_batch(batch)
-            evals.extend(batch_evals)
+        with ThreadPoolExecutor(max_workers=self.thread_count) as executor:
+            future_to_batch = {
+                executor.submit(self._send_chatgpt_batch, batch): batch
+                for batch in batches
+            }
+
+            for future in as_completed(future_to_batch):
+                try:
+                    batch_evals = future.result()
+                    evals.extend(batch_evals)
+                except Exception as e:
+                    print(f"Batch processing failed: {e}")
+                    evals.extend([Evaluation(EvalCode.ERROR, f"Batch processing failed with error `{e}`")] * len(future_to_batch[future]))
+
         return evals
 
     def _send_chatgpt_batch(self, case_responses: Collection[CaseResponse]) -> Collection[Evaluation]:
