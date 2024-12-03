@@ -1,1 +1,2 @@
 from quandry.subjects.openaisubject import OpenAiSubject
+from quandry.subjects.geminisubject import GeminiSubject

@@ -16,9 +16,13 @@ from quandry.utils import static_init
 import uuid
 from quandry.evaluators.llmclassifier_prompts import get_instruction
 
+import logging
+from logging.handlers import RotatingFileHandler
+
 
 ENV_GEMINI_API_KEY = "KEY_GEMINIAPI"
 ENV_OPENAI_API_KEY = "KEY_OPENAI"
+import time
 
 def parse_response(response: str) -> Evaluation:
     response = response.strip()
@@ -157,9 +161,9 @@ class LlmClassifier_Gemini(IEvaluator):
 
 @static_init
 class LlmClassifier_ChatGPT(IEvaluator):
-    def __init__(self, model_id:str="gpt-4o", max_batch:int=5, thread_count:int=4):
+    def __init__(self, model_id:str="gpt-4o", batch_size:int=1, thread_count:int=8):
         self.model_id = model_id
-        self.max_batch = max_batch
+        self.batch_size = batch_size
         self.thread_count = thread_count
     
     @classmethod
@@ -170,7 +174,6 @@ class LlmClassifier_ChatGPT(IEvaluator):
         static.model_config = {
             "temperature": 1, # Medium temperature to allow for dynamic inputs
             "top_p": .5, # Lower top_p for more determinism
-            "model": "gpt-4o",
         }
                 
         static.initialized = True
@@ -193,9 +196,6 @@ class LlmClassifier_ChatGPT(IEvaluator):
         instruction = get_instruction()
         content = get_case_content(prompt, expectation, response, instruction.prompt_encapsulator)
         client:openai.Client = static.client   
-        
-        print(f"Instruction: {instruction.text}")
-        print(f"Content: {content}")
         try:
             completion = client.chat.completions.create(
                 messages=self.package_message(instruction.text, content),
@@ -222,26 +222,37 @@ class LlmClassifier_ChatGPT(IEvaluator):
     
     def evaluate_batch(self, case_responses: Collection[CaseResponse]) -> Collection[Evaluation]:
         from concurrent.futures import ThreadPoolExecutor, as_completed
-        max_batch = self.max_batch
-        batches = [case_responses[i:i + max_batch] for i in range(0, len(case_responses), max_batch)]
+        batch_size = self.batch_size
+        batches = [case_responses[i:i + batch_size] for i in range(0, len(case_responses), batch_size)]
 
         # Use ThreadPoolExecutor for multithreading
+        
         evals = []
+        # Associate batches with their indices
+        indexed_batches = list(enumerate(batches))
         with ThreadPoolExecutor(max_workers=self.thread_count) as executor:
-            future_to_batch = {
-                executor.submit(self._send_chatgpt_batch, batch): batch
-                for batch in batches
+            # Submit tasks with batch indices for tracking
+            future_to_index = {
+                executor.submit(self._send_chatgpt_batch, batch): index
+                for index, batch in indexed_batches
             }
-
-            for future in as_completed(future_to_batch):
+            
+            results = [None] * len(batches)  # Placeholder for ordered results
+            
+            for future in as_completed(future_to_index):
+                index = future_to_index[future]  # Retrieve batch index
                 try:
-                    batch_evals = future.result()
-                    evals.extend(batch_evals)
+                    batch_evals = future.result()  # Get batch evaluations
+                    results[index] = batch_evals  # Store in correct order
                 except Exception as e:
                     print(f"Batch processing failed: {e}")
-                    evals.extend([Evaluation(EvalCode.ERROR, f"Batch processing failed with error `{e}`")] * len(future_to_batch[future]))
+                    # Fill with error evaluations if processing fails
+                    results[index] = [Evaluation(EvalCode.ERROR, f"Batch processing failed with error `{e}`")] * len(batches[index])
 
+        # Flatten results into a single list
+        evals = [evaluation for batch_evals in results for evaluation in batch_evals]
         return evals
+
 
     def _send_chatgpt_batch(self, case_responses: Collection[CaseResponse]) -> Collection[Evaluation]:
         static = LlmClassifier_ChatGPT
@@ -249,27 +260,42 @@ class LlmClassifier_ChatGPT(IEvaluator):
         instruction = get_instruction(batch=True)
         content = [get_case_content(cr.prompt, cr.expectation, cr.response,instruction.prompt_encapsulator)
                    for cr in case_responses]
-
-
+        
+        # Don't batch if there's only one case
+        if len(content) == 1:
+            return [self._send_chatgpt(case_responses[0].prompt, case_responses[0].expectation, case_responses[0].response)]
+        
         # Split content by batch separator
         content = f"\n{instruction.batch_separator}\n".join(content)
-        content += f"\n{instruction.batch_separator}"
         client:openai.Client = static.client
         
         try:
             completion = client.chat.completions.create(
                 messages=self.package_message(instruction.text, content),
                 response_format={"type":"text"},
-                **static.model_config
+                model=self.model_id,
+                **static.model_config,
             )
             response: str = completion.choices[0].message.content
+            
+            # Set up logging
+            logger = logging.getLogger("ChatGPTClassifier")
+            logger.setLevel(logging.DEBUG)
+            handler = RotatingFileHandler("chatgptclassifier.log", maxBytes=2 * 1024 * 1024, backupCount=0)
+            handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+            logger.addHandler(handler)
+
+            # Log content and response
+            logger.debug(f"Content: {content}")
+            logger.debug(f"Response: {response}")
+            
             
             responses = response.split(instruction.batch_separator)
             responses = [r.strip() for r in responses if r]
             
             evals = [parse_response(response) for response in responses]
             for i in range(len(responses), len(case_responses)):
-                 evals.append(Evaluation(EvalCode.ERROR, f"API response missing for case {i}"))
+                 evals.append(Evaluation(EvalCode.ERROR, f"API response missing for case {i}. Response:\n{response}"))
                  
             # If the number of responses is more than the number of cases, add an error evaluation
             if len(responses) > len(case_responses):
