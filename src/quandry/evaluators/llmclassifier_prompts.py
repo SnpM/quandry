@@ -71,10 +71,13 @@ def get_instruction(batch:bool=False) -> Instruction:
     if batch is not None:
         # Generate nonce to reduce likelihood of malicious separators
         batch_separator = f"==={uuid.uuid4().hex}==="
+        batch_separator = "="*10
         batch_instruction_part = _sparse_batch_instruction_part.replace("BATCH_SEPARATOR", batch_separator)
         instruction += batch_instruction_part
         
     prompt_encapsulator = uuid.uuid4().hex
+    prompt_encapsulator = f"==={prompt_encapsulator}==="
+    prompt_encapsulator = "="*10
     instruction = instruction.replace("PROMPT_ENCAPSULATOR", prompt_encapsulator)
     
     return Instruction(instruction, batch_separator, prompt_encapsulator)
